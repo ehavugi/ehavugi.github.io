@@ -9,17 +9,17 @@ The `code` folder contains some demos/prototypes of my research. You can find mo
 
 Examples of demos: 
 
-- [LLM test (in browser)](https://ehavugi.github.io/code/llmtest.html)
-- [Code runner](https://ehavugi.github.io/code/pythonrunner.html)
+- [LLM test (in browser)](https://ehavugi.github.io/code/llmtest/)
+- [Code runner](https://ehavugi.github.io/code/pythonrunner/)
 - ECCE 2025 data repo : [ECCE 2025-data](https://github.com/ehavugi/ECCE-2025-data)
  
- - Cost Model : [Cost Model](https://ehavugi.github.io/costmodel.html)
+ - Planar PCB Cost Model : [Cost Model](https://ehavugi.github.io/costmodel)
 
 
 Forks from other researchers(Hosted or modified from theirs)
-* Mag-Net Hub : [Mag-Net (with ASU coreloss model added)](https://github.com/ehavugi/mag-net-hub) 
-* Magnet-Engine :[Magnet-Engine (with ASU coreloss model added)](https://github.com/ehavugi/magnet-engine)
+* Mag-Net Hub - Mag-Net (with ASU coreloss model added): [https://github.com/ehavugi/mag-net-hub](https://github.com/ehavugi/mag-net-hub) 
+* Magnet-Engine - Magnet-Engine (with ASU coreloss model added):[https://github.com/ehavugi/magnet-engine](https://github.com/ehavugi/magnet-engine)
+* Princeton MagNet - Princeton MagNet (pure-python simulation alternative to PLECS): [https://github.com/ehavugi/magnet](https://github.com/ehavugi/magnet)
 
 ## License
-
 
