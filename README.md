@@ -22,7 +22,10 @@ The `code` folder contains some demos/prototypes of my research. You can find mo
 - [LLM test (in browser)](https://ehavugi.github.io/code/llmtest/)
 
 
-### Forks from other researchers(Hosted or modified from theirs)
+### Code forks from other researchers (Hosted demos or modified repos)
+
+This is so that others can fork more or modify more the following repositories:
+
 * Mag-Net Hub - Mag-Net (with ASU coreloss model added): [https://github.com/ehavugi/mag-net-hub](https://github.com/ehavugi/mag-net-hub) 
 * Magnet-Engine - Magnet-Engine (with ASU coreloss model added):[https://github.com/ehavugi/magnet-engine](https://github.com/ehavugi/magnet-engine)
 * Princeton MagNet - Princeton MagNet (pure-python simulation alternative to PLECS): [https://github.com/ehavugi/magnet](https://github.com/ehavugi/magnet)
