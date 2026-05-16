@@ -1,0 +1,1050 @@
+---
+title: "LLM test(in browser)"
+layout: default
+---
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Research Group AI (Robust)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .prose p {
+        margin-bottom: 0.5rem;
+    }
+
+    .prose ul {
+        list-style-type: disc;
+        margin-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .prose strong {
+        font-weight: bold;
+    }
+
+    .prose a {
+        color: #2563eb;
+        text-decoration: underline;
+    }
+
+    input[type=range] {
+        -webkit-appearance: none;
+        background: transparent;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: #2563eb;
+        margin-top: -6px;
+        cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .suggestion-chip {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        transition: all 0.2s;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .suggestion-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .toggle-checkbox:checked {
+        right: 0;
+        border-color: #68D391;
+    }
+
+    .toggle-checkbox:checked+.toggle-label {
+        background-color: #68D391;
+    }
+</style>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold"><i class="fas fa-microchip mr-2"></i>MAPEL</h1>
+                <p class="text-blue-200 text-xs mt-1">Research Assistant web help</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center">
+                    <label for="prod-toggle" class="flex items-center cursor-pointer">
+                        <div class="relative">
+                            <input type="checkbox" id="prod-toggle" class="sr-only" onchange="toggleProductionMode()">
+                            <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                            <div
+                                class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform duration-300 ease-in-out">
+                            </div>
+                        </div>
+                        <div class="ml-2 text-xs font-medium text-blue-200">Dev Mode</div>
+                    </label>
+                </div>
+                <div id="status-container"
+                    class="bg-blue-800 text-blue-200 text-xs px-3 py-1 rounded-full border border-blue-700 flex items-center">
+                    <i id="status-icon" class="fas fa-circle text-[8px] mr-1.5 text-gray-400"></i>
+                    <span id="status-label">Offline</span>
+                </div>
+            </div>
+        </div>
+        <div id="loader-container" class="w-full bg-blue-800 h-1 mt-2 flex">
+            <div id="llm-bar" class="bg-blue-400 h-1 transition-all duration-300" style="width: 0%"
+                title="LLM Download"></div>
+            <div id="embed-bar" class="bg-green-400 h-1 transition-all duration-300" style="width: 0%"
+                title="Embedding Model Download"></div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto w-full p-2 md:p-4 flex flex-col gap-4 relative">
+
+        <!-- FALLBACK START & iOS WARNING -->
+        <div id="manual-start-prompt"
+            class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-2 rounded shadow-sm flex justify-between items-center">
+            <div class="text-xs text-yellow-800">
+                <p class="font-bold">Initialization Paused</p>
+                <p id="start-msg">Tap to start (may require data download).</p>
+            </div>
+            <button onclick="triggerManualStart()"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-4 rounded shadow">Start</button>
+        </div>
+
+        <!-- ADMIN CONFIG -->
+        <div id="config-section" class="space-y-4 transition-all duration-500">
+
+            <!-- SYSTEM PROMPT -->
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2 cursor-pointer select-none"
+                    onclick="toggleSection('prompt-panel')">
+                    <h2 class="text-md font-semibold text-slate-700"><i class="fas fa-user-tie mr-2"></i> System Prompt
+                    </h2>
+                    <i class="fas fa-chevron-down text-slate-400 text-sm"></i>
+                </div>
+                <div id="prompt-panel" class="hidden border-t border-slate-100 pt-2 mt-2">
+                    <textarea id="system-prompt-text"
+                        class="w-full h-24 p-2 border border-slate-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y">
+You are a helpful PhD research assistant for the Ranjram Research Group at Arizona State University.
+The group is led by Dr. Mike Ranjram and specializes in High Frequency Magnetics, Power Electronics packaging, and Wide Bandgap devices.
+Answer questions strictly based on facts provided in the context. Be professional and academic in tone.
+</textarea>
+                </div>
+            </div>
+
+            <!-- DATA SOURCES -->
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2 cursor-pointer select-none"
+                    onclick="toggleSection('source-panel')">
+                    <h2 class="text-md font-semibold text-slate-700"><i class="fas fa-globe mr-2"></i> Web Sources</h2>
+                    <div class="flex items-center gap-2">
+                        <span id="cache-status" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">No
+                            Data</span>
+                        <i class="fas fa-chevron-down text-slate-400 text-sm"></i>
+                    </div>
+                </div>
+
+                <div id="source-panel" class="hidden border-t border-slate-100 pt-2 mt-2">
+                    <p class="text-[10px] text-slate-500 mb-2">URLs will be scraped and <strong>appended</strong> to the
+                        manual text below.</p>
+                    <textarea id="url-list"
+                        class="w-full h-24 p-2 border border-slate-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 mb-2"
+                        placeholder="One URL per line">
+https://faculty.engineering.asu.edu/ranjram/mike-ranjram/
+https://faculty.engineering.asu.edu/ranjram/
+https://faculty.engineering.asu.edu/ranjram/publications/
+https://hyptcenter.asu.edu/members/
+</textarea>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400">Data expires after 24h.</span>
+                        <button onclick="scrapeWebData()" id="scrape-btn"
+                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded transition-colors flex items-center gap-2">
+                            <i class="fas fa-plus-circle"></i> Append Web Data
+                        </button>
+                    </div>
+                    <div id="scrape-log"
+                        class="mt-2 text-[10px] text-slate-500 font-mono max-h-20 overflow-y-auto hidden bg-slate-50 p-2 rounded">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG CONTENT -->
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2 cursor-pointer select-none"
+                    onclick="toggleSection('rag-panel')">
+                    <h2 class="text-md font-semibold text-slate-700"><i class="fas fa-database mr-2"></i> RAG Content
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <span id="vector-status" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">No
+                            Index</span>
+                        <i class="fas fa-chevron-down text-slate-400 text-sm"></i>
+                    </div>
+                </div>
+
+                <div id="rag-panel" class="hidden border-t border-slate-100 pt-2 mt-2">
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label class="text-xs font-bold text-slate-600">Chunks</label>
+                            <input type="range" id="setting-chunks" min="1" max="20" value="7" step="1"
+                                class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-600">Threshold</label>
+                            <input type="range" id="setting-threshold" min="0" max="1.0" value="0.1" step="0.05"
+                                class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                    <textarea id="rag-content"
+                        class="w-full h-32 p-2 border border-slate-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y"
+                        placeholder="Manual text goes here...">
+[About the Lab]
+Our research group: Miniaturized and Advanced Power Electronics Laboratory (MAPEL), led by Dr. Mike Ranjram, specializes in High Frequency Magnetics and Power Electronics packaging. 
+We are based in the ECD-103 on ASU Campus.
+
+[Core Loss Modeling]
+A major focus is modeling core losses in MnZn ferrite materials. We utilize the improved Steinmetz equation (iGSE) and latest core loss modeling methods.
+
+[Lab overview]
+Power electronics are a cornerstone technology of the modern world, and their advancement is fundamental to improving the size, efficiency, and capability of our electrical systems and devices.
+In 2023, 82% of the energy consumed in the U.S. was derived from fossil fuels, much of it burned to drive internal combustion engines and provide heating. Similarly, 64% of the electricity we generated came from burning natural gas and coal. To avoid catastrophic changes in our climate, the use of fossil fuels must be greatly curtailed, and we must fundamentally redefine the nature of our consumption to make much more effective use of cleanly generated electrical energy. Achieving this demands advances in how we process and control electrical energy.
+In concert, we are also demanding that the power electronics we currently use become, broadly speaking, “better”. This includes making them smaller, more efficient, capable of accommodating wider input and output specifications, and providing/supporting new system functionality.
+Power electronics research has a critical role to play in this evolving landscape, serving as the environment where new applications and leaps in performance can be proposed, nimbly investigated, and commercialized through appropriate partnerships. This is what our group works to achieve.
+
+[Mike Ranjram]
+Dr. Mike Ranjram is an Assistant Professor in the School of Electrical, Computer, and Energy Engineering at Arizona State University. 
+He leads the Miniaturized and Advanced Power Electronics Laboratory (MAPEL), where his research group focuses on making power electronics smaller, 
+more efficient, and more capable, and in leveraging these improvements to enable the next generation of sustainable systems and devices.
+ A current focus is on high-frequency power conversion, and on system- and component-level techniques for reducing the cost, volume, weight,
+  and loss of power magnetic components, which today present a dominant bottleneck toward improved power conversion.
+
+[Research Thrusts Overview]
+Our group seeks to dramatically improve the size, efficiency, operating range, and performance of power electronics and leverage these improvements to move energy systems forward.
+
+In pursuing this goal, we target three overarching research thrusts: innovative converter designs and architectures which mitigate the passive component bottlenecks in power electronics, improved techniques and approaches for power magnetic components, and exploring new/emerging applications that can be enabled/supported by power electronics. This page summarizes some of the ongoing work in our laboratory. Please feel free to contact us if you would like to discuss further.
+
+
+These research thrusts are displayed below in order of component-level, then converter-level, then system-level work performed by our group.
+
+[Automated Core Loss Characterization]
+Magnetic components present a key bottleneck towards miniaturizing power electronics. Understanding the loss of a
+ magnetic material is foundational to maximally leveraging their capability and mitigating this bottleneck. 
+ A difficulty is that these losses are generally non-linear and must be assessed under real-world large-signal excitations. 
+ Today, this data is very limited, typically reported using empirical power-law fits on a select amount of measured data (the Steinmetz equation).
+  We have developed, and continue to improve, in-house core loss testers that enable automated collection of core loss data under varying waveshapes, 
+  flux densities, frequencies, and temperatures (25-100C), including automated core loss testing at 1-20MHz. These testbeds enable identification of the highest performing magnetic materials for miniaturization.
+
+
+[High Performance, High Frequency Planar Magnetics]
+Planar magnetic designs are especially promising for miniaturization,
+offering strong advantages in terms of manufacturability, repeatability, thermal performance and cost compared to wire-wound alternatives.
+ However, they present challenges such as poor window fill factor, the potential for high inter- and intra-winding capacitance, and the 
+ difficulty of achieving highly efficient terminations, especially in highly interleaved designs. 
+ These challenges are aggravated at the higher operating frequencies where many high performance magnetic materials 
+ are optimally operated. We work to better understand these challenges and limitations, and to develop designs which are optimized around them.
+  We are also exploring new domains for this technology, such as for low-cost medium voltage isolation in utility-scale solar photovoltaic power plants.
+
+
+[Coupled Electronic and Magnetic Systems]
+Our research group leverages a special magnetic component architecture which we call a “Coupled Electronic and Magnetic System” (CEMS). In a CEMS,
+electronics define the conductive loops around one or more magnetic cores such that those electronics become fundamental to defining the magnetic 
+properties of the component and vice-versa. This can enable new and useful functionality compared to a conventional connection between those electronics
+and magnetics. An example CEMS is the Variable Inverter/Rectifier Transformer (VIRT), illustrated here. This structure enables the two full-bridges
+formed by Q1-Q4 and Q5-Q8 to be dc coupled but ac decoupled (taking advantage of the transformer core to also provide this ac decoupling). 
+This allows a voltage greater than the output voltage to be applied to the transformer’s center post, and results in this structure behaving 
+like a transformer with “fractional turns” (e.g., 4:1 step down with only 2 primary turns), highly advantageous for high step-down, high output
+current applications. Our group explores this and other CEMSs to maximize the capability of magnetics.
+
+
+[Miniaturized Power Converters]
+We combine our expertise in miniaturized high frequency magnetics, planar magnetics, and CEMSs with emerging wide-bandgap semiconductor devices
+ and resonant/soft-switching circuit topologies to develop miniaturized and advanced power converters.
+
+
+[RF Power Conversion and Applications]
+Our laboratory can support power electronics research in the low ISM bands (6.78, 13.56, 27.12 MHz). These frequencies are relevant for industrial RF power generation 
+(e.g., plasma generation systems for semiconductor fabrication) and wireless power transfer. An example relevant project is a 13.56MHz variable reactor platform 
+we developed to mimic the time-varying reactance of a plasma load, pictured here. This can be combined with a time-varying resistance platform to implement 
+a “plasma dummy load” that shortens the development and debug time for evaluating new RF plasma generation concepts and systems.
+
+[Global HyPT Center]
+The Global Hydrogen Production Technologies (HyPT) Center establishes an international partnership of six countries – US, Australia, Canada, UK, Egypt, 
+and Germany – to formulate a pathway to low-cost large-scale net-zero hydrogen production, with funding from US, Australia, Canada, and UK. Researchers with
+ diverse expertise from many institutions in different countries interweave under the Center to work synergistically with the common goal of achieving US$1/kg 
+ and gigatons/year net-zero hydrogen production. Our group is exploring power electronic architectures towards this goal.
+
+[Members]
+People
+Faculty
+
+Mike.Ranjram@asu.edu
+Mike Ranjram
+Assistant Professor
+School of Electrical, Computer, and Energy Engineering
+Ph.D., Massachusetts Institute of Technology, Cambridge, MA (2021)
+M.A.Sc., University of Toronto, Toronto, ON, Canada (2015)
+B.A.Sc., University of Toronto, Toronto, ON, Canada (2013)
+Dr. Ranjram’s main research interest is in making power electronics smaller, more efficient, and more capable, and in leveraging these improvements to enable the next generation of sustainable systems and devices. A current focus is on high-frequency power conversion, and on system- and component-level techniques for reducing the cost, volume, weight, and loss of power magnetic components, which today present a dominant bottleneck toward improved power conversion.
+He has developed high performance power electronics in a wide range of applications, including 45W mobile phone chargers, 1kW data center supplies, 30kW battery energy storage systems, and MW-level high-voltage dc systems.
+Dr. Ranjram is a recipient of the IEEE Transactions on Power Electronics Prize Paper Award and a multiple-time winner of the ASU Top 5% Teaching Award. He authored the solutions manual for the 2nd edition of Principles of Power Electronics.
+Graduate Students
+
+Jacob Anderson
+Graduate Research Associate (Ph.D.)
+Jacob completed his BSE in Electrical Engineering at Arizona State University in Dec. 2023. His current research interests are in miniaturized, high performance power electronics leveraging emerging widebandgap semiconductors, and in automated high frequency core loss testing platforms which serve that miniaturization.
+Prior to joining as a doctoral student, Jacob was an active member of MAPEL as an undergraduate researcher and as a research aide.
+
+Emmanuel Havugimana
+Graduate Research Associate (Ph.D.)
+Emmanuel completed his B.Sc. in Electrical Engineering and Master of Engineering in Electrical Engineering and Computer Science at the Massachusetts Institute of Technology. His current research interests are in high frequency power magnetics and power electronics.
+Before ASU, he worked as an Electrical Engineer at an electric mobility startup, Ampersand Ltd, in Kigali,  Rwanda
+
+Nick Kirkby
+Graduate Research Associate (Ph.D.)
+Nick completed his B.Sc. in Mechanical Engineering at the Massachusetts Institute of Technology. Nick’s current research focus is the measurement and characterization of core loss of low permeability magnetic materials, thermal considerations in these systems, and in modular power conversion.
+Nick’s background is in software engineering for power electronics including motor controllers and power converters. He is a recipient of the NSF Graduate Research Fellowship (2025).
+
+Htat “Ted” Min
+Graduate Research Associate (Ph.D.)
+Htat (Ted) has B.S. in Electrical Engineering from Northern Illinois University and M.S. in Electrical Engineering from Arizona State University, where he is currently pursuing a PhD.
+Previously, he worked on power electronics of aerospace/defense power generation, distribution and controls at Raytheon Technologies Corporation. He now holds a Staff Electrical Engineer position at Northrop Grumman Corporation-Tactical Space Systems Division, located in Gilbert, AZ.
+
+Sritharini Radhakrishnan
+Graduate Research Associate (Ph.D.)
+Sritharini earned her BSE in Electrical Engineering with a minor in Materials Science and Engineering from Arizona State University. Her current research centers around coupled electronic and magnetic systems.
+Prior to beginning her doctoral studies, Sritharini worked at Intel and Sandia National Laboratories.
+
+Ian Willows
+Graduate Research Associate (Ph.D.)
+Ian completed his BSE in Electrical Engineering at ASU Fall 2022. He joined MAPEL in Fall 2023 with interests in power electronics and electrical machinery. Ian is interested in both R&D and teaching after completion of his PhD.
+Before joining the lab, Ian worked at a space and defense company designing hardware test benches and performing stress analysis on PCBs.
+
+Abbas Syed Nooruddin
+Researcher (M.S.)
+Abbas completed his Bachelor of Technology in Electrical Engineering from Aligarh Muslim University and earned his M.S. in Electrical Engineering from Arizona State University in May 2025. His current research is focused on modeling nonlinear capacitance for high-frequency AC-DC converters, miniaturization of capacitor banks, and high-efficiency DC-DC converters. Abbas’ background is in high-frequency magnetics, power electronics converter control, and analog circuit design.
+Undergraduate Students
+
+Brandon Despain
+FURI Student
+Brandon is pursuing a BSE in Mechanical Engineering and will graduate in May of 2027. His research interest is in variable inductors. He also works as a UGTA at the Ira A Fulton School of Engineering and as Lab Fabrication Assistant at the Game, Arts, Media, and Engineering school.
+
+Diego Puerta
+FURI Student
+Diego is pursuing a BSE in Electrical Engineering with a minor in Mathematics. His research interests are analog and RF integrated circuits, power electronics, and wireless communications. 
+Diego will work for Texas Instruments this summer as a Test and Validation Engineering Intern on the High-Speed Amplifiers team in Tucson. After graduating in May 2026, he intends to pursue a PhD.
+Former Students
+Sakib Ahmed (2023), Graduate RA. Current: Completing Ph.D. in semiconductor fabrication and energy efficient computing at ASU.
+Humberto Delgado (2023), FURI. Current: Completing undergraduate studies at ASU.
+Ahmed Ibrahim Elbeshbeshy (2023), Visiting Researcher (Ph.D.). Current: completing Ph.D. in power electronics at Florida International University, Miami, FL.
+Erik Amaro Rodriguez (2024), Undergraduate Researcher. Current: Intern at Nikola Motors; completing M.S. in Robotics and Autonomous Systems.
+Darshan Tagare (2024), Graduate Research Assistant (M.S.). Winner of the Certificate of Excellence for best Graduate Thesis. Current: Engineer at Generac Power Systems.
+Daniel Graves (2023-2024), FURI. Current: Completing undergraduate studies at ASU; intern at SRP.
+Tyson Klose (2024), Undergraduate Researcher. Current: Engineer at APS.
+Hunter Bridges (2024-2025), FURI.
+Ayomide Laguda (2025), FURI. Current: Completing undergraduate studies at ASU.
+Rebecca Meier (2025), FURI. Current: Completing undergraduate studies at ASU.
+Michael Leef (2023-2025), FURI. Current: Engineer at SRP. Completing Master’s studies in Power System Engineering at ASU.
+
+[Publications]
+Pre-print versions of our research publications can be downloaded by clicking on the citations below.
+
+E. Havugimana and M. K. Ranjram, “A Simple Data-Driven Machine Learning-based Software Package for Accurate Magnetic Core Loss Computation,” in 2025 IEEE Energy Conversion Congress and Exposition (ECCE), 2025.
+J. R. Anderson and M. K. Ranjram, “The Harmonically Partitioned Power Converter Architecture: Single-Stage Single-Phase ac/dc Power Conversion Using Bidirectional Switches,” IEEE Transactions on Power Electronics, pp. 1–14, 2025
+I. D. Willows, S. Radhakrishnan, and M. K. Ranjram, “Multi-Level Coupled Electronic and Magnetic System for Wide-Gain Constant Power Conversion,” in 2024 IEEE Energy Conversion Congress and Exposition (ECCE), Oct. 2024, pp. 7268–7275.
+H. W. Min and M. K. Ranjram, “Improved High-Frequency, Medium-Voltage Isolation Planar Transformers,” in 2024 IEEE Energy Conversion Congress and Exposition (ECCE), Oct. 2024, pp. 1533–1540.
+E. Havugimana and M. K. Ranjram, “Automated Core Loss Tester Error Characterization for New Contributions to Large-Scale Datasets,” in 2024 IEEE Energy Conversion Congress and Exposition (ECCE), Oct. 2024, pp. 6910–6917.
+N. J. Kirkby and M. K. Ranjram, “Temperature Control for Automated High Frequency Core Loss Testing,” in 2024 IEEE Workshop on Control and Modeling for Power Electronics (COMPEL), Jun. 2024, pp. 1–8.
+J. R. Anderson, N. J. Kirkby, and M. K. Ranjram, “Class-D Amplifier-Based Core Loss Measurements for High Frequency Magnetic Materials,” in 2024 IEEE Workshop on Control and Modeling for Power Electronics (COMPEL), Jun. 2024, pp. 1–8.
+D. Tagare, S. Park, and M. K. Ranjram, “Emulation of Plasma Load Reactances by Saturation Control of Low-Permeability Inductors,” presented at the 2024 IEEE Applied Power Electronics Conference and Exposition (APEC), Long Beach, CA, USA, 2024
+M. V. Joisher, R. S. Bayliss III, M. K. Ranjram, R. S. Yang, A. Jurkov, and D. J. Perreault, “High-Performance High-Power Inductor Design for High-Frequency Applications,” presented at the 2024 IEEE Applied Power Electronics Conference and Exposition (APEC), Long Beach, CA, USA, 2024.
+E. Havugimana, S. Ahmed, and M. K. Ranjram, “Assessment of Cost Factors Impacting Planar Magnetic Windings,” in 2023 IEEE 24th Workshop on Control and Modeling for Power Electronics (COMPEL), Jun. 2023, pp. 1–8.
+J. R. Anderson and M. K. Ranjram, “Automation of High-Frequency Magnetic Core Loss Data Collection,” in 2023 IEEE 24th Workshop on Control and Modeling for Power Electronics (COMPEL), Jun. 2023, pp. 1–8.
+M. K. Ranjram and D. J. Perreault, “A 380-12 V, 1-kW, 1-MHz Converter Using a Miniaturized Split-Phase, Fractional-Turn Planar Transformer,” IEEE Transactions on Power Electronics, vol. 37, no. 2, pp. 1666–1681, Feb. 2022.
+M. K. Ranjram and D. J. Perreault, “A Modeling Approach for the VIRT and Other Coupled Electronic and Magnetic Systems,” IEEE Journal of Emerging and Selected Topics in Power Electronics, pp. 1–1, 2021.
+M. K. Ranjram, C. Zhang, and D. J. Perreault, “A Two-Stage Universal Input Charger With Wide Output Voltage Range,” IEEE Open Journal of Power Electronics, vol. 1, pp. 88–102, 2020.
+M. K. Ranjram and D. J. Perreault, “Leveraging Multi-Phase and Fractional-Turn Integrated Planar Transformers for Miniaturization in Data Center Applications,” in 2020 IEEE 21st Workshop on Control and Modeling for Power Electronics (COMPEL), Nov. 2020, pp. 1–8.
+M. K. Ranjram, C. Zhang, and D. J. Perreault, “A Two-stage Universal Input Charger with Wide Output Voltage Range,” in 2019 IEEE Energy Conversion Congress and Exposition (ECCE), Sep. 2019, pp. 4685–4692.
+M. K. Ranjram, P. Acosta, and D. J. Perreault, “Design Considerations for Planar Magnetic Terminations,” in 2019 20th Workshop on Control and Modeling for Power Electronics (COMPEL), Jun. 2019, pp. 1–8. doi:
+I. Moon, M. K. Ranjram, S. Chakraborty, and D. J. Perreault, “A Wide Operating Range Converter Using a Variable-Inverter-Rectifier-Transformer with Improved Step-Down Capability,” in 2019 IEEE Applied Power Electronics Conference and Exposition (APEC), Mar. 2019, pp. 1575–1582.
+M. K. Ranjram, I. Moon, and D. J. Perreault, “Variable-inverter-rectifier-transformer: a hybrid electronic and magnetic structure enabling adjustable high step-down conversion ratios,” in 2017 IEEE 18th Workshop on Control and Modeling for Power Electronics (COMPEL), Jul. 2017, pp. 1–8.
+S. Rivera, M. Ranjram, and P. W. Lehn, “A high-efficiency multi-port DC-DC converter for photovoltaic energy conversion systems,” in IECON 2016 – 42nd Annual Conference of the IEEE Industrial Electronics Society, Oct. 2016, pp. 6722–6727.
+M. Ranjram and P. W. Lehn, “A multiport power-flow controller for DC transmission grids,” IEEE Transactions on Power Delivery, vol. 31, no. 1, pp. 389–396, Feb. 2016.
+G. J. Kish, M. Ranjram, and P. W. Lehn, “A Modular Multilevel DC/DC Converter With Fault Blocking Capability for HVDC Interconnects,” IEEE Transactions on Power Electronics, vol. 30, no. 1, pp. 148–162, Jan. 2015.
+M. Ranjram and P. W. Lehn, “A three-port power flow controller for HVDC grids,” in 2015 9th International Conference on Power Electronics and ECCE Asia (ICPE-ECCE Asia), Jun. 2015, pp. 1815–1822.
+Y. Han, M. Ranjram, and P. W. Lehn, “A bidirectional multi-port DC-DC converter with reduced filter requirements,” in 2015 IEEE 16th Workshop on Control and Modeling for Power Electronics (COMPEL), Jul. 2015, pp. 1–6.
+M. Ranjram, G. Simeonov, and P. W. Lehn, “A high step-up transformerless DC/DC converter with flat efficiency,” in IECON 2014 – 40th Annual Conference of the IEEE Industrial Electronics Society, Oct. 2014, pp. 1034–1040.
+
+[Contact]
+For collaboration inquiries, please contact Dr. Mike Ranjram
+[Source: https://faculty.engineering.asu.edu/ranjram/mike-ranjram/]
+[Source: https://faculty.engineering.asu.edu/ranjram/publications/]
+[Source: https://hyptcenter.asu.edu/members/]
+
+
+[What is the primary focus of the MAPEL lab]
+ The Miniaturized and Advanced Power Electronics Laboratory (MAPEL) specializes in High Frequency Magnetics and Power Electronics packaging. The group focuses on making power electronics smaller, more efficient, and capable of accommodating wider input and output specifications.
+
+[Where is the MAPEL lab located]
+ The lab is based in room ECD-103 on the Arizona State University (ASU) Campus.
+
+[Who leads the MAPEL research group]
+ The group is led by Dr. Mike Ranjram, an Assistant Professor in the School of Electrical, Computer, and Energy Engineering at ASU.
+
+[What is the lab's approach to core loss modeling]
+ A major focus of the lab is modeling core losses in MnZn ferrite materials. They utilize the improved Steinmetz equation (iGSE) and the latest core loss modeling methods.
+
+[What is the Global HyPT Center Q] 
+The Global Hydrogen Production Technologies (HyPT) Center is an international partnership of six countries (US, Australia, Canada, UK, Egypt, and Germany) aimed at formulating a pathway to low-cost ($1/kg) large-scale net-zero hydrogen production. MAPEL explores power electronic architectures to support this goal.
+
+[What is a Coupled Electronic and Magnetic System or CEMS]
+ A CEMS is a component architecture where electronics define the conductive loops around one or more magnetic cores, such that the electronics become fundamental to defining the magnetic properties. An example is the Variable Inverter/Rectifier Transformer (VIRT), which allows for "fractional turns" and is advantageous for high step-down applications.
+
+[What research does the lab do regarding RF power conversion]
+ The laboratory supports power electronics research in the low ISM bands (6.78, 13.56, 27.12 MHz). This includes developing platforms like a 13.56MHz variable reactor to mimic the time-varying reactance of plasma loads for semiconductor fabrication systems.
+
+[What are the advantages and challenges of Planar Magnetics according to the lab]
+ Planar magnetics are promising for miniaturization due to manufacturability, repeatability, and thermal performance. However, they face challenges such as poor window fill factor, high inter- and intra-winding capacitance, and difficulty in achieving efficient terminations in highly interleaved designs.
+
+[What is the educational background of Dr. Mike Ranjram]
+ Dr. Ranjram holds a Ph.D. (2021) from the Massachusetts Institute of Technology (MIT), and both an M.A.Sc. (2015) and B.A.Sc. (2013) from the University of Toronto.
+
+[Who are the current Ph.D. students in the MAPEL group ]
+ The current Graduate Research Associates pursuing their Ph.D.s are Jacob Anderson, Emmanuel Havugimana, Nick Kirkby, Htat "Ted" Min, Sritharini Radhakrishnan, and Ian Willows.
+
+[What prior industry experience does PhD student Htat Ted Min have]
+ Htat "Ted" Min previously worked on power electronics for aerospace/defense at Raytheon Technologies Corporation and currently holds a Staff Electrical Engineer position at Northrop Grumman Corporation.
+
+[What is the research focus of PhD student Emmanuel Havugimana]
+ Emmanuel's research interests are in high frequency power magnetics and power electronics. He has also published work on machine learning-based software for magnetic core loss computation.
+
+[Which student received the NSF Graduate Research Fellowship in 2025]
+ Nick Kirkby, a Ph.D. student in the group, is a recipient of the NSF Graduate Research Fellowship (2025).
+
+[What is the research focus of Abbas Syed Nooruddin]
+ Abbas, a Researcher (M.S.), focuses on modeling nonlinear capacitance for high-frequency AC-DC converters, miniaturization of capacitor banks, and high-efficiency DC-DC converters.
+
+[List some recent publications by the lab regarding core loss testing ] 
+Recent publications include: "A Simple Data-Driven Machine Learning-based Software Packagefor Accurate Magnetic Core Loss Computation" (2025), "Automated Core Loss Tester Error Characterization" (2024), and "Class-D Amplifier-Based Core Loss Measurements" (2024).
+
+[What is the Variable Inverter Rectifier Transformer or VIRT]
+ The VIRT is an example of a Coupled Electronic and Magnetic System (CEMS). It allows two full-bridges to be DC coupled but AC decoupled, enabling the structure to behave like a transformer with "fractional turns" (e.g., 4:1 step down with only 2 primary turns).
+
+</textarea>
+                    <div class="mt-2 flex justify-end">
+                        <button id="reindex-btn" onclick="startIndexing()"
+                            class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-sync-alt mr-1"></i> Re-Index Text
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT INTERFACE -->
+        <div id="chat-wrapper"
+            class="flex-grow flex flex-col bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden h-[500px] md:h-[600px] relative transition-all duration-500">
+            <div id="chat-box" class="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-50 relative">
+                <div class="flex items-start">
+                    <div
+                        class="bg-blue-100 text-blue-900 p-3 rounded-lg rounded-tl-none max-w-[85%] shadow-sm prose text-sm">
+                        <p><strong>AI Assistant:</strong> Welcome! I am powered by a local neural network and a vector
+                            database generated from the research group's website.</p>
+                        <p>Ask me about specific publications, members, or research topics.
+
+                            The answers might be wrong. For accurate answers, please refer to <a
+                                href="https://faculty.engineering.asu.edu/ranjram/mike-ranjram/"
+                                target="_blank">https://faculty.engineering.asu.edu/ranjram/mike-ranjram/</a> and
+                            related pages.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 border-t border-slate-100 py-2 px-3 overflow-x-auto whitespace-nowrap scrollbar-hide flex gap-2"
+                id="suggestions-area">
+                <!-- Suggestions injected here -->
+            </div>
+
+            <div class="p-3 bg-white border-t border-slate-100 relative">
+                <div id="autocomplete-list"
+                    class="hidden absolute bottom-full left-3 right-3 mb-2 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-20 max-h-40 overflow-y-auto">
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="user-input"
+                        class="flex-grow p-3 border border-slate-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm text-sm disabled:bg-slate-100"
+                        placeholder="Loading system..." disabled autocomplete="off" oninput="handleInput()"
+                        onkeydown="if(event.key === 'Enter') sendMessage()">
+                    <button id="send-btn" onclick="sendMessage()" disabled
+                        class="bg-blue-600 text-white w-12 h-12 rounded-full font-semibold shadow-md flex items-center justify-center transition-all opacity-50 cursor-not-allowed hover:bg-blue-700 disabled:hover:bg-blue-600"><i
+                            class="fas fa-paper-plane"></i></button>
+                </div>
+                <div class="text-center mt-2 flex justify-center gap-4">
+                    <span id="model-name-label" class="text-[10px] text-slate-400">Model: --</span>
+                    <span id="mode-indicator" class="text-[10px] text-slate-400">Offline</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        // CHANGED: Use bundled version to avoid URL parsing errors in some environments
+        import { CreateMLCEngine } from "https://esm.sh/@mlc-ai/web-llm@0.2.73?bundle";
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.8.0';
+
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+
+        const gpuModelId = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+        const cpuModelId = "Xenova/LaMini-Flan-T5-248M";
+
+        const GH_DATA_URL = "";
+
+        const MANDATORY_SUFFIX = ". You are an app developed by a power electronics group to help web visitors learn more about the research the group does. Answer only based on the provided context. If the answer is not in the context, respond with 'I don't know.'. Keep the answers concise and professional.";
+        const CACHE_KEY = "rag_data_v4";
+        const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+        // State
+        let engine = null;
+        let cpuGenerator = null;
+        let embedder = null;
+        let vectorStore = [];
+        let topicStore = [];
+        let isCpuMode = false;
+        let initPromise = null;
+        let loadTimeout = null;
+        let ragTopics = [];
+        let isProcessing = false;
+        let isDemoMode = false;
+
+        // --- DATA LOADING ---
+        async function loadDataStrategy() {
+            if (GH_DATA_URL) {
+                try {
+                    const resp = await fetch(GH_DATA_URL);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        document.getElementById('rag-content').value = data.content;
+                        return;
+                    }
+                } catch (e) { console.warn("GitHub load failed"); }
+            }
+
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const data = JSON.parse(cached);
+                if ((Date.now() - data.timestamp) < CACHE_EXPIRY_MS) {
+                    const currentText = document.getElementById('rag-content').value;
+                    if (!currentText.includes("[SOURCE:")) {
+                        document.getElementById('rag-content').value = currentText + "\n\n" + data.content;
+                    }
+                    updateCacheStatus(data.timestamp);
+                    return;
+                }
+            }
+            await scrapeWebData(false);
+        }
+
+        window.scrapeWebData = async function (force = false) {
+            const btn = document.getElementById('scrape-btn');
+            const log = document.getElementById('scrape-log');
+            const urls = document.getElementById('url-list').value.split('\n').filter(u => u.trim() !== '');
+            const textarea = document.getElementById('rag-content');
+            let newText = "";
+
+            if (force) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Scraping...`;
+                log.classList.remove('hidden');
+            }
+
+            const corsProxy = 'https://api.allorigins.win/get?url=';
+
+            for (let url of urls) {
+                try {
+                    if (force) log.innerHTML += `<div>Fetching: ${url}...</div>`;
+                    const response = await fetch(corsProxy + encodeURIComponent(url.trim()));
+                    const data = await response.json();
+
+                    if (data.contents) {
+                        const text = parseHtmlToText(data.contents);
+                        newText += `\n\n[SOURCE: ${url}]\n${text}`;
+                        if (force) log.innerHTML += `<div class="text-green-600">✓ Success (${text.length} chars)</div>`;
+                    }
+                } catch (e) {
+                    if (force) log.innerHTML += `<div class="text-red-500">✗ Error: ${e.message}</div>`;
+                }
+            }
+
+            if (!textarea.value.includes(newText.substring(0, 50))) {
+                textarea.value = textarea.value + newText;
+            }
+
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), content: newText }));
+            updateCacheStatus();
+
+            if (force) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-sync-alt"></i> Force Update`;
+                startIndexing();
+            } else {
+                if (embedder) startIndexing();
+            }
+        }
+
+        function parseHtmlToText(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const trash = doc.querySelectorAll('script, style, nav, footer, header, .menu, .sidebar, noscript, .nav');
+            trash.forEach(el => el.remove());
+            let text = "";
+            const blocks = doc.querySelectorAll('p, h1, h2, h3, h4, li, div.entry-content');
+            blocks.forEach(block => {
+                const t = block.innerText.trim().replace(/\s+/g, ' ');
+                if (t.length > 20) text += t + "\n";
+            });
+            return text;
+        }
+
+        function updateCacheStatus(timestamp, expired = false) {
+            const label = document.getElementById('cache-status');
+            if (timestamp) {
+                const date = new Date(timestamp).toLocaleDateString();
+                label.innerText = `Cached: ${date}`;
+                label.className = "text-[10px] bg-green-100 text-green-600 px-2 py-1 rounded";
+            }
+        }
+
+        // --- PRODUCTION MODE ---
+        window.toggleProductionMode = function () {
+            const checkbox = document.getElementById('prod-toggle');
+            const configSection = document.getElementById('config-section');
+            const chatWrapper = document.getElementById('chat-wrapper');
+            const label = document.querySelector('label[for="prod-toggle"] div.text-xs');
+
+            if (checkbox.checked) {
+                configSection.style.display = 'none';
+                chatWrapper.style.height = 'calc(100vh - 120px)';
+                label.innerText = 'Prod Mode';
+                label.classList.remove('text-blue-200');
+                label.classList.add('text-green-300');
+            } else {
+                configSection.style.display = 'block';
+                chatWrapper.style.height = '500px';
+                label.innerText = 'Dev Mode';
+                label.classList.add('text-blue-200');
+                label.classList.remove('text-green-300');
+            }
+        }
+
+        // --- VECTOR UTILS ---
+        function cosineSimilarity(vecA, vecB) {
+            let dotProduct = 0, normA = 0, normB = 0;
+            for (let i = 0; i < vecA.length; i++) {
+                dotProduct += vecA[i] * vecB[i];
+                normA += vecA[i] * vecA[i];
+                normB += vecB[i] * vecB[i];
+            }
+            if (normA === 0 || normB === 0) return 0;
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+
+        async function initEmbedder() {
+            if (embedder) return;
+            const statusLabel = document.getElementById('vector-status');
+            const embedBar = document.getElementById('embed-bar');
+
+            try {
+                statusLabel.innerHTML = `<i class="fas fa-circle-notch fa-spin text-blue-500 mr-1"></i> Loading Embedder`;
+                embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                    progress_callback: (data) => { if (data.status === 'progress') embedBar.style.width = data.progress + "%"; }
+                });
+                embedBar.style.width = "100%";
+                if (document.getElementById('rag-content').value.trim() !== "") startIndexing();
+                else statusLabel.innerHTML = "Ready to Index";
+            } catch (err) {
+                console.error(err);
+                statusLabel.innerHTML = `<i class="fas fa-exclamation-circle text-red-500 mr-1"></i> Embedder Failed`;
+            }
+        }
+
+        window.startIndexing = async function () {
+            if (!embedder) return;
+            const text = document.getElementById('rag-content').value;
+            const statusLabel = document.getElementById('vector-status');
+            const btn = document.getElementById('reindex-btn');
+
+            if (text.trim().length < 20) return;
+
+            statusLabel.innerHTML = `<i class="fas fa-cog fa-spin text-blue-500 mr-1"></i> Indexing...`;
+            btn.disabled = true;
+
+            const rawChunks = text.split(/\n\s*\n|(?=\[.*?\])/g);
+            const chunks = rawChunks.map(c => c.trim()).filter(c => c.length > 20);
+
+            await extractAndEmbedTopics(text);
+
+            vectorStore = [];
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                const output = await embedder(chunk, { pooling: 'mean', normalize: true });
+                vectorStore.push({ id: i, text: chunk, embedding: output.data });
+            }
+
+            statusLabel.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i> Indexed (${vectorStore.length})`;
+            btn.disabled = false;
+        }
+
+        async function performVectorSearch(query) {
+            if (!embedder || vectorStore.length === 0) return { context: "", found: false };
+            const output = await embedder(query, { pooling: 'mean', normalize: true });
+            const queryVec = output.data;
+
+            const scoredChunks = vectorStore.map(item => ({
+                text: item.text,
+                score: cosineSimilarity(queryVec, item.embedding)
+            }));
+
+            scoredChunks.sort((a, b) => b.score - a.score);
+            const threshold = parseFloat(document.getElementById('setting-threshold').value);
+            const chunkLimit = parseInt(document.getElementById('setting-chunks').value);
+            const bestMatch = scoredChunks[0];
+
+            if (bestMatch.score < threshold) return { context: "", found: false, score: bestMatch.score };
+
+            const selected = scoredChunks.slice(0, chunkLimit);
+            return {
+                context: selected.map(c => c.text).join('\n\n'),
+                found: true,
+                score: bestMatch.score
+            };
+        }
+
+        // --- SUGGESTIONS & TOPICS ---
+        async function extractAndEmbedTopics(text) {
+            const lines = text.split('\n');
+            const topics = [];
+            for (let line of lines) {
+                line = line.trim();
+                if (line.length > 4 && line.length < 60 && !line.includes('.') || line.startsWith('[')) {
+                    topics.push(line.replace(/[\[\]]/g, ''));
+                }
+            }
+            ragTopics = [...new Set(topics)].slice(0, 10);
+            topicStore = [];
+            for (let topic of ragTopics) {
+                const output = await embedder(topic, { pooling: 'mean', normalize: true });
+                topicStore.push({ topic: topic, embedding: output.data });
+            }
+            renderSuggestions(topicStore.slice(0, 5).map(t => t.topic));
+        }
+
+        async function updateSmartSuggestions(lastQuery) {
+            if (!embedder || topicStore.length === 0) return;
+            const output = await embedder(lastQuery, { pooling: 'mean', normalize: true });
+            const queryVec = output.data;
+            const scoredTopics = topicStore.map(t => ({
+                topic: t.topic,
+                score: cosineSimilarity(queryVec, t.embedding)
+            }));
+            scoredTopics.sort((a, b) => b.score - a.score);
+            renderSuggestions(scoredTopics.slice(0, 4).map(t => t.topic));
+        }
+
+        function renderSuggestions(topics) {
+            const container = document.getElementById('suggestions-area');
+            if (container) {
+                container.innerHTML = '';
+                topics.forEach(topic => {
+                    const btn = document.createElement('button');
+                    btn.className = "suggestion-chip text-left text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 hover:bg-blue-100 transition-colors flex-shrink-0";
+                    btn.innerHTML = `<i class="fas fa-lightbulb mr-1 text-blue-400"></i> <strong>${topic.substring(0, 20)}</strong>`;
+                    btn.onclick = () => {
+                        document.getElementById('user-input').value = `Tell me more about the group's work on ${topic}`;
+                        sendMessage();
+                    };
+                    container.appendChild(btn);
+                });
+            }
+        }
+
+        // --- CORE UI ---
+        window.handleInput = function () {
+            updateButtonState();
+            const input = document.getElementById('user-input');
+            const val = input.value.toLowerCase();
+            const list = document.getElementById('autocomplete-list');
+            if (!val) { list.classList.add('hidden'); return; }
+            const matches = ragTopics.filter(t => t.toLowerCase().includes(val));
+            if (matches.length > 0) {
+                list.innerHTML = '';
+                list.classList.remove('hidden');
+                matches.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = "autocomplete-item px-4 py-2 text-sm text-slate-700 border-b border-slate-50 last:border-0 flex justify-between items-center";
+                    div.innerHTML = `<span>${match}</span>`;
+                    div.onclick = () => {
+                        input.value = `Tell me more about the group's work on ${match}`;
+                        list.classList.add('hidden');
+                        input.focus();
+                        updateButtonState();
+                    };
+                    list.appendChild(div);
+                });
+            } else { list.classList.add('hidden'); }
+        }
+
+        document.addEventListener('click', function (e) {
+            const list = document.getElementById('autocomplete-list');
+            if (e.target !== list && e.target !== document.getElementById('user-input')) list.classList.add('hidden');
+        });
+
+        window.toggleSection = function (id) { document.getElementById(id).classList.toggle('hidden'); }
+
+        function setAppStatus(state, text) {
+            const label = document.getElementById('status-label');
+            const icon = document.getElementById('status-icon');
+            label.innerText = text;
+            icon.className = "fas fa-circle text-[8px] mr-1.5";
+            if (state === 'offline') icon.classList.add('text-gray-400');
+            else if (state === 'loading') icon.classList.add('text-yellow-400', 'animate-pulse');
+            else if (state === 'ready') icon.classList.add('text-green-400');
+            else if (state === 'error') icon.classList.add('text-red-500');
+        }
+
+        function setFormBusy(busy) {
+            isProcessing = busy;
+            const input = document.getElementById('user-input');
+            const btn = document.getElementById('send-btn');
+            input.disabled = busy;
+            btn.disabled = busy;
+            if (busy) btn.classList.add('opacity-50');
+            else { btn.classList.remove('opacity-50'); setTimeout(() => input.focus(), 50); }
+        }
+
+        function enableInput() {
+            const input = document.getElementById('user-input');
+            input.disabled = false;
+            input.placeholder = "Ask a question...";
+            input.focus();
+            document.getElementById('mode-indicator').innerText = isCpuMode ? "CPU Mode" : "GPU Mode";
+            updateButtonState();
+        }
+
+        function activateDemoMode(reason) {
+            console.warn("Demo Mode: " + reason);
+            isDemoMode = true;
+            document.getElementById('manual-start-prompt').classList.add('hidden');
+            setAppStatus('ready', 'Reader Mode');
+            enableInput();
+        }
+
+        window.triggerManualStart = function () {
+            document.getElementById('manual-start-prompt').classList.add('hidden');
+            initPromise = initEngine();
+        }
+
+        window.updateButtonState = function () {
+            const input = document.getElementById('user-input');
+            const btn = document.getElementById('send-btn');
+            if (!input || !btn) return;
+            const isEmpty = input.value.trim() === '';
+            // Allow if engine/cpu/demo ready
+            const ready = engine || cpuGenerator || isDemoMode;
+            const shouldDisable = isEmpty || isProcessing || !ready;
+            btn.disabled = shouldDisable;
+            if (shouldDisable) {
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('hover:bg-blue-700');
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.add('hover:bg-blue-700');
+            }
+        }
+
+        // --- ROBUST INIT ENGINE ---
+        async function initEngine() {
+            if (engine || cpuGenerator) return;
+            setAppStatus('loading', 'Starting...');
+            if (loadTimeout) clearTimeout(loadTimeout);
+
+            await initEmbedder(); // Parallel load safely
+
+            const llmBar = document.getElementById('llm-bar');
+
+            // 1. Try GPU with Strict Checks
+            let useGPU = false;
+            if (navigator.gpu) {
+                try {
+                    // Force high-performance to wake up Android GPUs
+                    const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+                    if (adapter) {
+                        useGPU = true;
+                        console.log("GPU Adapter found:", adapter.info);
+
+                        engine = await CreateMLCEngine(gpuModelId, {
+                            initProgressCallback: (report) => {
+                                if (report.progress) llmBar.style.width = (report.progress * 100) + "%";
+                                if (report.text.includes("Loading")) setAppStatus('loading', 'Loading GPU Model...');
+                            }
+                        });
+
+                        setAppStatus('ready', 'GPU Online');
+                        document.getElementById('model-name-label').innerText = "Model: Qwen 0.5B (GPU)";
+                        enableInput();
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("GPU Attempt failed:", e);
+                    // Explicit fallthrough to CPU
+                }
+            }
+
+            // 2. Fallback to CPU
+            console.log("Falling back to CPU Mode");
+            isCpuMode = true;
+            setAppStatus('loading', 'Loading CPU Model...');
+
+            try {
+                cpuGenerator = await pipeline('text2text-generation', cpuModelId, {
+                    progress_callback: (data) => { if (data.status === 'progress') llmBar.style.width = data.progress + "%"; }
+                });
+                setAppStatus('ready', 'CPU Online');
+                document.getElementById('model-name-label').innerText = "Model: LaMini T5 (CPU)";
+                const chatBox = document.getElementById('chat-box');
+                chatBox.innerHTML += `<div class="flex items-start"><div class="bg-yellow-100 text-yellow-800 p-3 rounded-lg rounded-tl-none max-w-[85%] shadow-sm prose text-sm"><p><strong>Note:</strong> WebGPU not found or failed. Running in CPU Mode (Slower).</p></div></div>`;
+                enableInput();
+            } catch (err) {
+                console.error(err);
+                activateDemoMode("All Engines Failed.");
+            }
+        }
+
+        async function generateResponse(prompt) {
+            if (isCpuMode && cpuGenerator) {
+                const output = await cpuGenerator(prompt, { max_new_tokens: 150, temperature: 0.1 });
+                return output[0].generated_text;
+            } else if (engine) {
+                const reply = await engine.chat.completions.create({
+                    messages: [{ role: "user", content: prompt }], temperature: 0.1, max_tokens: 256
+                });
+                return reply.choices[0].message.content;
+            }
+            return null;
+        }
+
+        window.sendMessage = async function () {
+            const inputField = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const userText = inputField.value.trim();
+            document.getElementById('autocomplete-list').classList.add('hidden');
+
+            if (!userText) return;
+            setFormBusy(true);
+
+            updateSmartSuggestions(userText);
+
+            const modeIndicator = document.getElementById('mode-indicator');
+            modeIndicator.innerText = "Searching...";
+            let ragResult = { context: "", found: false };
+            try { ragResult = await performVectorSearch(userText); } catch (e) { console.error(e); }
+
+            inputField.value = '';
+            chatBox.innerHTML += `<div class="flex items-center justify-end"><div class="bg-blue-600 text-white p-3 rounded-lg rounded-tr-none max-w-[85%] shadow-sm text-sm"><p>${userText}</p></div></div>`;
+            const aiMsgId = "ai-" + Date.now();
+            chatBox.innerHTML += `<div class="flex items-start"><div class="bg-blue-100 text-blue-900 p-3 rounded-lg rounded-tl-none max-w-[90%] shadow-sm prose text-sm"><p id="${aiMsgId}"><i class="fas fa-circle-notch fa-spin text-blue-500"></i> Thinking...</p></div></div>`;
+            const scrollToBottom = () => chatBox.scrollTop = chatBox.scrollHeight;
+            scrollToBottom();
+
+            try {
+                let finalAnswer = "";
+                const basePersona = document.getElementById('system-prompt-text').value;
+                let fullPrompt = "";
+
+                if (!ragResult.found) {
+                    modeIndicator.innerText = "General Knowledge";
+                    fullPrompt = `${basePersona}\n\nQuestion: ${userText}\nAnswer based on general knowledge. ${MANDATORY_SUFFIX}`;
+                } else {
+                    modeIndicator.innerText = `Context Found (${ragResult.score.toFixed(2)})`;
+                    fullPrompt = `${basePersona}\n\nContext:\n${ragResult.context}\n\nQuestion: ${userText}\n\nAnswer using the context. If not found, say NO_RELEVANT_INFO. ${MANDATORY_SUFFIX}`;
+                }
+
+                if (isCpuMode) {
+                    // T5 Prompt Engineering
+                    fullPrompt = `Question: ${userText} Context: ${ragResult.found ? ragResult.context : "General Knowledge"} Answer:`;
+                }
+
+                setAppStatus('loading', 'Generating...');
+                let aiResponse = await generateResponse(fullPrompt);
+
+                if (!aiResponse) {
+                    aiResponse = ragResult.found ? `**Reader Mode (No Generator):**\n\n${ragResult.context}` : "No relevant info found.";
+                } else if (aiResponse.includes("NO_RELEVANT_INFO")) {
+                    modeIndicator.innerText = "Fallback -> General";
+                    const fallbackPrompt = isCpuMode ? `Question: ${userText} Answer:` : `${basePersona}\n\nQuestion: ${userText}\nAnswer general knowledge.`;
+                    aiResponse = await generateResponse(fallbackPrompt);
+                } else if (ragResult.found) {
+                    aiResponse += `\n\n*(Source: Database)*`;
+                }
+
+                document.getElementById(aiMsgId).innerHTML = marked.parse(aiResponse);
+                if (!isDemoMode) setAppStatus('ready', isCpuMode ? 'CPU Ready' : 'GPU Ready');
+
+            } catch (err) {
+                document.getElementById(aiMsgId).innerText = "Error: " + err.message;
+                setAppStatus('error', 'Error');
+            } finally {
+                setFormBusy(false);
+                scrollToBottom();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            loadDataStrategy();
+            initPromise = initEngine();
+            document.getElementById('prod-toggle').checked = false;
+
+            // Increased timeout for mobile connections (8s)
+            loadTimeout = setTimeout(() => {
+                if (!engine && !cpuGenerator) {
+                    document.getElementById('manual-start-prompt').classList.remove('hidden');
+                }
+            }, 8000);
+        });
+    </script>

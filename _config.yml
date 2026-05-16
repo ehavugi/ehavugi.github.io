@@ -10,10 +10,10 @@
 ############################
 
 # Name of website
-title: My website
+title: Emmanuel Havugimana
 
 # Your name to show in the footer
-author: Some Person
+author: Emmanuel Havugimana
 
 ###############################################
 # --- List of links in the navigation bar --- #
@@ -21,10 +21,18 @@ author: Some Person
 
 navbar-links:
   About Me: "aboutme"
-  Resources:
-    - Beautiful Jekyll: "https://beautifuljekyll.com"
-    - Learn markdown: "https://www.markdowntutorial.com/"
-  Author's home: "https://deanattali.com"
+  ASU Mag Model: "asumag"
+  Cost Model: "costmodel"
+  Publications: 
+    - "ECCE 2024": "ecce2024"
+    - "ECCE 2025": "ecce2025"
+    - "COMPEL 2026": "compel2026"    
+  Blog: "blog"
+  Codes Hosting:
+    - "ASU Mag Model": "asumag"
+    - "Python runner": "code/pythonrunner"   
+    - "LLM test(in browser)": "code/llmtest"   
+  Contact: "contact"
 
 ################
 # --- Logo --- #
@@ -50,17 +58,14 @@ round-avatar: true
 # You can change the order that they show up on the page by changing the order here.
 # Uncomment the links you want to show and add your information to each one.
 social-network-links:
-  email: "someone@example.com"
+  # email: "[EMAIL_ADDRESS]"
   rss: true  # remove this line if you don't want to show an RSS link at the bottom
-  facebook: deanattali
-  github: daattali
-  twitter: daattali
-  patreon: DeanAttali
-  youtube: "@daattali"
-  whatsapp: 15551212
+  # facebook: 
+  # github: 
+  # whatsapp: 
 #  medium: yourname
 #  reddit: yourname or r/yoursubreddit
-#  linkedin: daattali
+#  linkedin: ehavugi
 #  xing: yourname
 #  stackoverflow: "3943160/daattali"
 #  snapchat: deanat78
@@ -260,11 +265,11 @@ date_format: "%B %-d, %Y"
 #################################################################################
 
 # Output options (more information on Jekyll's site)
-timezone: "America/Toronto"
+timezone: "America/Phoenix"
 markdown: kramdown
 highlighter: rouge
 permalink: /:year-:month-:day-:title/
-paginate: 5
+paginate: 6
 
 kramdown:
   input: GFM
@@ -278,7 +283,7 @@ defaults:
     values:
       layout: "post"
       comments: true  # add comments to all blog posts
-      social-share: true # add social media sharing buttons to all blog posts
+      social-share: false # add social media sharing buttons to all blog posts
   -
     scope:
       path: "" # any file that's not a post will be a "page" layout by default

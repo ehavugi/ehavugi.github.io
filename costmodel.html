@@ -1,0 +1,118 @@
+---
+layout: page
+title: Cost Model demo
+---
+
+<h1> Cost Model demo </h1>
+
+
+board width (inch) : <input type="number" id="width" name="Board Area" min="10" max="100" value="4.566"> <br />
+
+board length (inch) : <input type="number" id="length" name="Board Area" min="10" max="100" value="5.0"> <br />
+
+Number of Layers(4, 10, 12) : <input type="number" id="layers" name="layer " min="0" max="100" , value="4"> <br />
+Quantity : <input type="number" id="Q" name="Board Area" min="10" max="100" , value="5.0"> <br />
+
+Dieletric Material : <select id="material">
+    <option value="FR4" selected>FR4</option>
+    <option value="RF775">RF775</option>
+</select> <br />
+
+Manufacturer : <select id="manufacturer">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="Average" selected>Average</option>
+
+</select><br />
+
+<button onclick="myFunction()">Quote me</button>
+<p style="color:red;">Note 1 : Only Manufacturer 3 and 4 provided quotes on RF775.</p>
+<p style="color:red;">Note 2 : (mostly) High Q used in model building is 50 units.</p>
+
+<p id="demo"></p>
+
+<script>
+    function myFunction() {
+        const GFC = 3304.48
+        const GVC = 2.72
+
+        const materialIndex = {
+            "FR4": 1,
+            "RF775": 19.3
+        }
+        const materialIndexF = {
+            "FR4": 1,
+            "RF775": 4
+        }
+        const LayerIndex = {
+            "2": 0.7, // approx 
+            "4": 1,
+            "6": 1.5, //approximate
+            "8": 2.0,  //approximate
+            "10": 2.5,
+            // "11":2.5
+            "12": 3.0
+        }
+
+        const MFCI = {
+            "1": 1,
+            "2": 0.32,
+            "3": 1.04,
+            "4": 0.75,
+            "Average": 0.77
+
+        }
+        const MVCI = {
+            "1": 1,
+            "2": 0.75,
+            "3": 0.34,
+            "4": 0.99,
+            "Average": 0.78
+
+        }
+
+        const DFIVAR = 0 //11.07017233
+        const length = parseFloat(document.getElementById('length').value);
+        const width = parseFloat(document.getElementById('width').value);
+        const Q = parseFloat(document.getElementById('Q').value);
+        const materiali = document.getElementById('material');
+        const manufactureri = document.getElementById('manufacturer');
+
+        const material = materiali[materiali.selectedIndex].text;
+        const manufacturer = manufactureri[manufactureri.selectedIndex].text;
+        console.log(materiali, material);
+        console.log(manufactureri, manufacturer);
+
+        const DVI = parseFloat(materialIndex[material]);
+        const DFI = parseFloat(materialIndexF[material]);
+
+        console.log("DI ", DVI);
+
+        const layers = document.getElementById('layers').value;
+        const LI = parseFloat(LayerIndex[layers]);
+
+        console.log("layers", layers);
+        console.log("Area ", width * length);
+        const MVCIx = parseFloat(MVCI[manufacturer]);
+        const MFCIx = parseFloat(MFCI[manufacturer]);
+        console.log("MVCIx :", MVCIx, ", MFCIx:  ", MFCIx)
+        console.log(MVCI, MFCI, manufacturer)
+
+        var totalCost = GFC * DFI * MFCIx + DFIVAR * Q + length * width * LI * GVC * Q * DVI * MVCIx;
+
+        var marginCost = DFIVAR + length * width * LI * GVC * DVI * MVCIx;
+
+        document.getElementById("demo").innerHTML = "Total cost " + Math.round(totalCost) + "<br/>" + "Unit cost  when Q = " + Q + " is : " + Math.round(totalCost / Q) + "<br/>" + "unit cost  at Large Q(estimate! ) is : " + Math.round(marginCost);
+
+    }
+
+</script>
+<script type="text/javascript">
+    function DoSubmit() {
+        document.myform.myinput.value = '1';
+        console.log("Hello")
+        return true;
+    }
+</script>

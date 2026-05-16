@@ -1,0 +1,879 @@
+---
+layout: default
+title: Code runner
+full-width: true
+---
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- PrismJS for Syntax Highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+<style>
+    /* Custom IDE Layout Styles */
+    .editor-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #020617;
+        /* bg-slate-950 */
+    }
+
+    .editor-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        padding: 1.5rem !important;
+        margin: 0 !important;
+        font-family: 'Fira Code', 'Consolas', monospace !important;
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+        white-space: pre !important;
+        word-spacing: normal !important;
+        word-break: normal !important;
+        tab-size: 4 !important;
+        border: none !important;
+        overflow: auto;
+    }
+
+    #code-display code {
+        font-family: inherit !important;
+        font-size: inherit !important;
+        line-height: inherit !important;
+        white-space: inherit !important;
+        word-spacing: inherit !important;
+    }
+
+    #code-display {
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    #code-editor {
+        color: transparent;
+        background: transparent;
+        caret-color: #cbd5e1;
+        z-index: 2;
+        resize: none;
+        outline: none;
+    }
+
+    /* Hide scrollbar for highlighting pre */
+    #code-display::-webkit-scrollbar {
+        display: none;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+    }
+
+    .bg-checkerboard {
+        background-color: #f8fafc;
+        background-image: linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
+            linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #f1f5f9 75%),
+            linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+</style>
+
+<!-- VIEW: LAB -->
+<section id="view-lab" class="view-section pb-20">
+    <div class="w-full max-w-[1800px] mx-auto flex flex-col gap-6 mt-6">
+
+        <div class="text-center mb-2">
+            <h2 class="text-2xl font-bold flex items-center justify-center gap-2">
+                <i data-lucide="flask-conical" class="w-6 h-6 text-blue-600"></i> Interactive Simulation Lab [Work in
+                progress]
+            </h2>
+            <p class="text-xs text-slate-500">Powered by WebAssembly (Pyodide)</p>
+            <p class="text-xs text-slate-500" style="color:red"><strong>NOTE: This is placeholder for now. The code
+                    below is just for demonstration.</strong></p>
+
+        </div>
+
+        <!-- The IDE Widget with fixed height to preserve internal scrolling -->
+        <div class="flex flex-col lg:flex-row gap-4 h-[85vh] min-h-[600px]">
+
+            <!-- Sidebar -->
+            <div
+                class="lg:w-72 flex-none flex flex-col gap-3 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+
+                <!-- Demos -->
+                <div class="flex-none p-3 border-b border-slate-100 bg-slate-50/50">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Models</span>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2" id="demo-list"></div>
+
+                <!-- Parameters (Dynamic) -->
+                <div id="param-container"
+                    class="hidden flex-none p-3 border-t border-slate-100 bg-slate-800 text-white">
+                    <div
+                        class="flex items-center gap-2 mb-2 text-slate-300 font-bold text-[10px] uppercase tracking-wider">
+                        <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> Parameters
+                    </div>
+                    <div id="sliders-target" class="space-y-3"></div>
+                </div>
+
+                <!-- History -->
+                <div class="flex-[0.5] min-h-[100px] flex flex-col border-t border-slate-100">
+                    <div class="flex items-center justify-between p-2 bg-slate-50/50 border-b border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><i
+                                data-lucide="history" class="w-3 h-3"></i> History</span>
+                        <button onclick="clearHistory()"
+                            class="text-[10px] text-red-500 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">Clear</button>
+                    </div>
+                    <div id="history-list" class="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-1"></div>
+                </div>
+
+                <!-- Status -->
+                <div class="flex-none p-2 bg-slate-900 text-white text-[10px] flex justify-between items-center">
+                    <span class="text-slate-400">Status:</span>
+                    <span id="engine-status" class="text-yellow-400 font-mono">Init...</span>
+                </div>
+            </div>
+
+            <!-- Main Editor Area -->
+            <div
+                class="flex-1 flex flex-col min-w-0 bg-slate-950 rounded-xl border border-slate-800 shadow-2xl overflow-hidden relative">
+
+                <!-- Toolbar -->
+                <div
+                    class="flex-none bg-slate-900 border-b border-slate-800 px-4 py-2 flex justify-between items-center h-12">
+                    <span id="current-filename"
+                        class="flex items-center gap-2 text-xs text-slate-300 font-mono bg-slate-800 px-2 py-1 rounded border border-slate-700">
+                        <i data-lucide="terminal" class="w-3 h-3 text-blue-400"></i> script.py
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="saveSnapshot(true)"
+                            class="p-1.5 text-slate-400 hover:text-green-400 transition-colors rounded hover:bg-slate-800"
+                            title="Save Snapshot">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                        </button>
+                        <div class="h-4 w-px bg-slate-700 mx-1"></div>
+                        <button id="reset-btn"
+                            class="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-slate-800"
+                            title="Reset Code">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        </button>
+                        <button id="run-btn"
+                            class="px-4 py-1.5 rounded-lg font-semibold text-white text-xs shadow-lg flex items-center gap-2 transition-all bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-wait">
+                            <i data-lucide="play" class="w-3 h-3 fill-current"></i> <span id="run-btn-text">RUN</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Split Content -->
+                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+                    <!-- Editor (Syntax Highlighting) -->
+                    <div class="flex-1 relative min-h-[300px] lg:min-h-0">
+                        <div class="editor-wrapper">
+                            <!-- Layer 1: Highlighted Code (Bottom) -->
+                            <pre id="code-display"
+                                class="editor-layer"><code class="language-python" id="highlighting-content"></code></pre>
+                            <!-- Layer 2: Textarea (Top) -->
+                            <textarea id="code-editor" class="editor-layer" spellcheck="false"
+                                oninput="updateHighlight(this.value); syncScroll(this);" onscroll="syncScroll(this);"
+                                onkeydown="handleTab(event, this)"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Output -->
+                    <div
+                        class="flex-1 bg-white border-l border-slate-800 flex flex-col min-h-[300px] lg:min-h-0 relative">
+                        <!-- Tabs -->
+                        <div
+                            class="flex border-b border-slate-200 flex-none h-10 items-center justify-between px-2 bg-slate-50">
+                            <div class="flex h-full">
+                                <button onclick="switchTab('graph')" id="tab-graph"
+                                    class="h-full px-4 text-xs font-medium transition-colors text-blue-600 border-b-2 border-blue-600 bg-white">Graph</button>
+                                <button onclick="switchTab('console')" id="tab-console"
+                                    class="h-full px-4 text-xs font-medium transition-colors text-slate-500 hover:text-slate-800 hover:bg-slate-100">Console</button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center bg-white rounded border border-slate-200 px-1">
+                                    <button onclick="zoomImage(0.1)"
+                                        class="p-1 hover:bg-slate-100 rounded text-slate-500"><i data-lucide="zoom-in"
+                                            class="w-3 h-3"></i></button>
+                                    <button onclick="zoomImage(-0.1)"
+                                        class="p-1 hover:bg-slate-100 rounded text-slate-500"><i data-lucide="zoom-out"
+                                            class="w-3 h-3"></i></button>
+                                </div>
+                                <button onclick="downloadImage()"
+                                    class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Download PNG"><i data-lucide="image-down" class="w-4 h-4"></i></button>
+                                <button onclick="downloadCSV()"
+                                    class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                    title="Download CSV"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Output Area -->
+                        <div
+                            class="flex-1 overflow-hidden relative flex items-center justify-center bg-slate-100/50 bg-checkerboard">
+
+                            <!-- Graph -->
+                            <div id="view-graph"
+                                class="w-full h-full flex flex-col items-center justify-center p-4 overflow-auto">
+                                <div class="bg-white p-2 rounded shadow-sm border border-slate-200 relative group transition-transform duration-200"
+                                    id="img-container">
+                                    <img id="output-image" src="" alt="Output"
+                                        class="max-w-full max-h-[600px] object-contain">
+                                </div>
+
+                                <div id="output-loader"
+                                    class="hidden absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                                    <div
+                                        class="loader border-blue-600 border-t-transparent mx-auto mb-2 w-8 h-8 border-4">
+                                    </div>
+                                    <p class="text-xs text-blue-600 font-bold animate-pulse">Running Simulation...</p>
+                                </div>
+                            </div>
+
+                            <!-- Console -->
+                            <div id="view-console"
+                                class="hidden w-full h-full bg-white rounded border border-slate-200 p-2 overflow-auto font-mono text-[10px] shadow-inner text-slate-700 custom-scrollbar relative z-20">
+                                <div id="console-logs"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Logic Script -->
+<script>
+    // --- 1. HIDDEN LIBRARY (Autograd Engine) ---
+    const HIDDEN_LIB = `
+import random
+import math
+
+params = {}
+csv_data = "No CSV generated. Use csv_data = '...'"
+plot_url = "" 
+
+class Value:
+    def __init__(self, data, _children=(), _op=''):
+        self.data = data
+        self.grad = 0
+        self._backward = lambda: None
+        self._prev = set(_children)
+
+    def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data + other.data, (self, other), '+')
+        def _backward():
+            self.grad += out.grad
+            other.grad += out.grad
+        out._backward = _backward
+        return out
+
+    def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data * other.data, (self, other), '*')
+        def _backward():
+            self.grad += other.data * out.grad
+            other.grad += self.data * out.grad
+        out._backward = _backward
+        return out
+
+    def __pow__(self, other):
+        assert isinstance(other, (int, float))
+        out = Value(self.data**other, (self,), f'**{other}')
+        def _backward():
+            self.grad += (other * self.data**(other-1)) * out.grad
+        out._backward = _backward
+        return out
+
+    def relu(self):
+        out = Value(0 if self.data < 0 else self.data, (self,), 'ReLU')
+        def _backward():
+            self.grad += (out.data > 0) * out.grad
+        out._backward = _backward
+        return out
+
+    def backward(self):
+        topo = []
+        visited = set()
+        def build(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev: build(child)
+                topo.append(v)
+        build(self)
+        self.grad = 1
+        for v in reversed(topo): v._backward()
+
+    def __neg__(self): return self * -1
+    def __radd__(self, other): return self + other
+    def __sub__(self, other): return self + (-other)
+    def __rmul__(self, other): return self * other
+    def __repr__(self): return f"Value({self.data:.4f})"
+
+class Module:
+    def zero_grad(self):
+        for p in self.parameters(): p.grad = 0
+    def parameters(self): return []
+
+class Linear(Module):
+    def __init__(self, nin, nout):
+        self.w = [[Value(random.uniform(-1,1)) for _ in range(nin)] for _ in range(nout)]
+        self.b = [Value(random.uniform(-1,1)) for _ in range(nout)]
+    def __call__(self, x):
+        outs = [sum((wi*xi for wi,xi in zip(w_row, x)), b) for w_row, b in zip(self.w, self.b)]
+        return outs[0] if len(outs) == 1 else outs 
+    def parameters(self):
+        return [p for row in self.w for p in row] + self.b
+
+class ReLU(Module):
+    def __call__(self, x):
+        if isinstance(x, list): return [xi.relu() for xi in x]
+        return x.relu()
+    def parameters(self): return []
+
+class Sequential(Module):
+    def __init__(self, *layers): self.layers = layers
+    def __call__(self, x):
+        for layer in self.layers: x = layer(x)
+        return x
+    def parameters(self):
+        return [p for layer in self.layers for p in layer.parameters()]
+
+class Flatten(Module):
+    def __call__(self, x):
+        out = []
+        for c in x:
+            for row in c:
+                out.extend(row)
+        return out
+    def parameters(self): return []
+
+class Conv2d(Module):
+    def __init__(self, in_c, out_c, kernel_size):
+        self.k = kernel_size
+        self.filters = [[[[Value(random.uniform(-0.5,0.5)) for _ in range(kernel_size)] 
+                         for _ in range(kernel_size)] 
+                        for _ in range(in_c)] for _ in range(out_c)]
+    
+    def __call__(self, x):
+        c_in, h, w = len(x), len(x[0]), len(x[0][0])
+        h_out, w_out = h - self.k + 1, w - self.k + 1
+        out = []
+        for f_idx in range(len(self.filters)): 
+            layer_map = []
+            for y in range(h_out):
+                row = []
+                for x_pos in range(w_out):
+                    val = Value(0)
+                    for c in range(c_in):
+                        for ky in range(self.k):
+                            for kx in range(self.k):
+                                val += x[c][y+ky][x_pos+kx] * self.filters[f_idx][c][ky][kx]
+                    row.append(val)
+                layer_map.append(row)
+            out.append(layer_map)
+        return out 
+    
+    def parameters(self):
+        params = []
+        for f in self.filters:
+            for c in f:
+                for row in c:
+                    params.extend(row)
+        return params
+`;
+
+    // --- 2. CONFIGURATION DATA ---
+    const DEMOS = [
+        {
+            id: 'core-loss',
+            name: 'ASU Mag Model',
+            description: 'Ferrite core power loss density simulation.[Working in progress]',
+            icon: 'zap',
+            color: 'text-yellow-500',
+            sliders: [
+                { id: 'k', label: 'Mat. Constant (k)', min: 5, max: 30, step: 1, value: 15 },
+                { id: 'beta', label: 'Flux Exp (beta)', min: 1, max: 3.5, step: 0.1, value: 2.4 },
+                { id: 'alpha', label: 'Freq Exp (alpha)', min: 1, max: 3.5, step: 0.1, value: 1.4 }
+            ],
+            defaultImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            code: `# ASU Mag 2023-2026 - Core Loss Models
+# Steinmetz Equation-based simulation **(To be updated with ML models)**
+# This is editable (don't get saved on server, checkpoints(not guaranteed either) and session might not be persistent***
+# Though the edited version stays for for browser.
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import io, base64
+
+plt.clf()
+plt.figure(figsize=(8, 5))
+plt.style.use('default')
+
+# Parameters from Sliders
+k = params.get('k', 15.0)
+alpha = params.get('alpha', 1.4) 
+beta = params.get('beta', 2.4)     
+
+freq_khz = np.linspace(10, 500, 100)
+b_values = [0.05, 0.1, 0.15, 0.2]
+colors = ['#2563eb', '#16a34a', '#d97706', '#dc2626']
+
+print(f"Simulating: k={k}, beta={beta}")
+
+# CSV Data Accumulator
+csv_rows = ["Freq(kHz),B(T),Loss(mW)"]
+
+for i, b in enumerate(b_values):
+    pv = k * ((freq_khz)**alpha) * (b**beta)
+    plt.loglog(freq_khz, pv, label=f'B = {b} T', color=colors[i], linewidth=2.5)
+    
+    # Add to CSV export
+    if i == 0: 
+        for f, p in zip(freq_khz, pv):
+             csv_rows.append(f"{f:.1f},{b},{p:.2f}")
+
+global csv_data
+csv_data = "\\n".join(csv_rows)
+
+plt.title('Core Loss Density vs Frequency', fontsize=12)
+plt.xlabel('Frequency (kHz)')
+plt.ylabel('Power Loss (mW/cm³)')
+plt.grid(True, alpha=0.3, linestyle='--')
+plt.legend()
+plt.tight_layout()
+
+buf = io.BytesIO()
+plt.savefig(buf, format='png', dpi=100)
+buf.seek(0)
+# Robust output: Save to global variable
+global plot_url
+plot_url = 'data:image/png;base64,' + base64.b64encode(buf.read()).decode('UTF-8')
+print("Graph generated.")`
+        },
+        {
+            id: 'sympy-solver',
+            name: 'Symbolic Math',
+            description: 'Exact equation solving and calculus helper.',
+            icon: 'calculator',
+            color: 'text-orange-500',
+            defaultImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            code: `# Symbolic Mathematics with SymPy
+import sympy
+from sympy import symbols, solve, diff, sin, exp, Eq
+import numpy as np
+import matplotlib.pyplot as plt
+import io, base64
+
+x = symbols('x')
+print("Solving x^2 - 4 = 0...")
+sol = solve(x**2 - 4, x)
+print(f"Roots: {sol}")
+
+expr = sin(x) * x**2
+deriv = diff(expr, x)
+print(f"Derivative d/dx: {deriv}")
+
+f_func = sympy.lambdify(x, expr, 'numpy')
+d_func = sympy.lambdify(x, deriv, 'numpy')
+
+x_vals = np.linspace(-10, 10, 200)
+plt.clf()
+plt.figure(figsize=(8, 5))
+plt.plot(x_vals, f_func(x_vals), label='f(x) = sin(x)*x^2', color='blue')
+plt.plot(x_vals, d_func(x_vals), label="f'(x)", color='red', linestyle='--')
+
+plt.title('Symbolic Analysis', fontsize=12)
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.axhline(0, color='black', linewidth=0.5)
+
+buf = io.BytesIO()
+plt.savefig(buf, format='png', dpi=100)
+buf.seek(0)
+# Robust output: Save to global variable
+global plot_url
+plot_url = 'data:image/png;base64,' + base64.b64encode(buf.read()).decode('UTF-8')
+print("Graph generated.")`
+        }
+    ];
+
+    // --- 3. GLOBAL STATE & STARTUP ---
+    let pyodide = null;
+    let activeDemoId = DEMOS[0].id;
+    let isPyodideLoading = true;
+    let els = {};
+    let currentZoom = 1.0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        els = {
+            demoList: document.getElementById('demo-list'),
+            editor: document.getElementById('code-editor'),
+            highlighting: document.getElementById('highlighting-content'),
+            filename: document.getElementById('current-filename'),
+            img: document.getElementById('output-image'),
+            imgContainer: document.getElementById('img-container'),
+            console: document.getElementById('console-logs'),
+            runBtn: document.getElementById('run-btn'),
+            runBtnText: document.getElementById('run-btn-text'),
+            resetBtn: document.getElementById('reset-btn'),
+            engineStatus: document.getElementById('engine-status'),
+            outputLoader: document.getElementById('output-loader'),
+            paramContainer: document.getElementById('param-container'),
+            slidersTarget: document.getElementById('sliders-target'),
+            historyList: document.getElementById('history-list')
+        };
+
+        renderSidebar();
+        loadDemo(DEMOS[0]);
+        initPyodide();
+
+        els.runBtn.addEventListener('click', () => {
+            saveSnapshot();
+            runSimulation();
+        });
+        els.resetBtn.addEventListener('click', () => {
+            const demo = DEMOS.find(d => d.id === activeDemoId);
+            els.editor.value = demo.code;
+            updateHighlight(demo.code);
+        });
+
+        lucide.createIcons();
+    });
+
+    // --- 4. EDITOR & UI FUNCTIONS ---
+
+    function updateHighlight(text) {
+        // escape html
+        text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // add line break for scrolling sync
+        if (text[text.length - 1] === "\n") text += " ";
+
+        els.highlighting.innerHTML = text;
+        Prism.highlightElement(els.highlighting);
+    }
+
+    function syncScroll(element) {
+        const pre = document.getElementById('code-display');
+        pre.scrollTop = element.scrollTop;
+        pre.scrollLeft = element.scrollLeft;
+    }
+
+    function handleTab(e, element) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = element.selectionStart;
+            const end = element.selectionEnd;
+            element.value = element.value.substring(0, start) + "    " + element.value.substring(end);
+            element.selectionStart = element.selectionEnd = start + 4;
+            updateHighlight(element.value);
+        }
+    }
+
+    function zoomImage(delta) {
+        currentZoom = Math.max(0.5, Math.min(3.0, currentZoom + delta));
+        els.imgContainer.style.transform = `scale(${currentZoom})`;
+    }
+
+    function renderSidebar() {
+        els.demoList.innerHTML = DEMOS.map(demo => `
+                <button onclick="selectDemo('${demo.id}')" 
+                    class="w-full text-left p-2 rounded-lg transition-all border flex items-start gap-3 demo-btn group hover:border-slate-300 ${demo.id === activeDemoId ? 'bg-blue-50 border-blue-200' : 'bg-white border-transparent'}">
+                    <div class="mt-0.5 p-1.5 rounded-md flex-none ${demo.id === activeDemoId ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}">
+                        <i data-lucide="${demo.icon}" class="w-4 h-4"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-semibold text-xs mb-0.5 truncate ${demo.id === activeDemoId ? 'text-blue-900' : 'text-slate-700'}">${demo.name}</div>
+                        <div class="text-[10px] text-slate-500 line-clamp-1">${demo.description}</div>
+                    </div>
+                </button>
+            `).join('');
+        lucide.createIcons();
+    }
+
+    function renderSliders(demo) {
+        if (!demo.sliders || demo.sliders.length === 0) {
+            els.paramContainer.classList.add('hidden');
+            return;
+        }
+
+        els.paramContainer.classList.remove('hidden');
+        els.slidersTarget.innerHTML = demo.sliders.map(s => `
+                <div class="text-[10px]">
+                    <div class="flex justify-between text-slate-400 mb-1">
+                        <span>${s.label}</span>
+                        <span id="val-${s.id}" class="text-white font-mono">${s.value}</span>
+                    </div>
+                    <input type="range" id="slider-${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}"
+                        class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        oninput="updateParam('${s.id}', this.value)">
+                </div>
+            `).join('');
+    }
+
+    window.updateParam = function (id, value) {
+        document.getElementById(`val-${id}`).innerText = value;
+        if (!isPyodideLoading && pyodide) {
+            const demo = DEMOS.find(d => d.id === activeDemoId);
+            const slider = demo.sliders.find(s => s.id === id);
+            if (slider) slider.value = parseFloat(value);
+            runSimulation();
+        }
+    }
+
+    function getHistoryKey(demoId) { return `phd_lab_history_${demoId}`; }
+
+    window.saveSnapshot = function (manual = false) {
+        const currentCode = els.editor.value;
+        const key = getHistoryKey(activeDemoId);
+        let history = JSON.parse(localStorage.getItem(key) || '[]');
+
+        if (history.length > 0 && history[0].code === currentCode) return;
+
+        const snapshot = {
+            timestamp: Date.now(),
+            code: currentCode,
+            manual: manual
+        };
+
+        history.unshift(snapshot);
+        if (history.length > 20) history.pop();
+
+        localStorage.setItem(key, JSON.stringify(history));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const key = getHistoryKey(activeDemoId);
+        const history = JSON.parse(localStorage.getItem(key) || '[]');
+
+        if (history.length === 0) {
+            els.historyList.innerHTML = `<div class="text-[10px] text-slate-400 italic text-center mt-2">No history.</div>`;
+            return;
+        }
+
+        els.historyList.innerHTML = history.map((snap, i) => {
+            const date = new Date(snap.timestamp);
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            return `
+                <button onclick="restoreSnapshot(${i})" class="w-full text-left p-1.5 rounded hover:bg-slate-100 flex justify-between items-center group transition-colors border-b border-slate-50 last:border-0">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full ${snap.manual ? 'bg-green-500' : 'bg-slate-300'}"></span>
+                        <div class="text-[10px] text-slate-600 font-mono">
+                           ${timeStr}
+                        </div>
+                    </div>
+                    <i data-lucide="rotate-ccw" class="w-3 h-3 text-slate-300 group-hover:text-blue-500"></i>
+                </button>
+            `;
+        }).join('');
+        lucide.createIcons();
+    }
+
+    window.restoreSnapshot = function (index) {
+        const key = getHistoryKey(activeDemoId);
+        const history = JSON.parse(localStorage.getItem(key) || '[]');
+        if (history[index]) {
+            els.editor.value = history[index].code;
+            updateHighlight(history[index].code);
+            runSimulation();
+        }
+    }
+
+    window.clearHistory = function () {
+        if (confirm("Delete all history for this model?")) {
+            const key = getHistoryKey(activeDemoId);
+            localStorage.removeItem(key);
+            renderHistory();
+        }
+    }
+
+    function selectDemo(id) {
+        activeDemoId = id;
+        const demo = DEMOS.find(d => d.id === id);
+        loadDemo(demo);
+        renderSidebar();
+    }
+
+    function loadDemo(demo) {
+        els.editor.value = demo.code;
+        updateHighlight(demo.code);
+        els.img.src = demo.defaultImage;
+        els.filename.innerHTML = `<i data-lucide="terminal" class="w-3 h-3 text-blue-400"></i> ${demo.id}.py`;
+        els.console.innerText = "";
+
+        renderSliders(demo);
+        renderHistory();
+        lucide.createIcons();
+        switchTab('graph');
+    }
+
+    async function initPyodide() {
+        try {
+            if (window.loadPyodide) { await setupPyodide(); return; }
+            const script = document.createElement('script');
+            script.src = "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js";
+            script.crossOrigin = "anonymous";
+            script.onload = async () => { await setupPyodide(); };
+            document.body.appendChild(script);
+        } catch (err) { console.error(err); }
+    }
+
+    async function setupPyodide() {
+        try {
+            els.engineStatus.innerText = "Loading WASM...";
+            pyodide = await loadPyodide({ stdout: (text) => console.log(text) });
+            els.engineStatus.innerText = "Inst. Packages...";
+            await pyodide.loadPackage(["numpy", "matplotlib", "sympy"]);
+
+            // Set Matplotlib Backend to Agg to prevent GUI errors
+            await pyodide.runPythonAsync(`
+import matplotlib
+matplotlib.use("Agg")
+                `);
+
+            els.engineStatus.innerText = "Loading Libs...";
+            await pyodide.runPythonAsync(HIDDEN_LIB);
+            els.engineStatus.innerText = "Ready";
+            els.engineStatus.classList.replace('text-yellow-400', 'text-green-400');
+            isPyodideLoading = false;
+        } catch (err) { console.error(err); }
+    }
+
+    async function runSimulation() {
+        if (!pyodide || isPyodideLoading) return;
+
+        els.runBtn.disabled = true;
+        els.runBtnText.innerText = "...";
+        els.outputLoader.classList.remove('hidden');
+        els.console.innerHTML = "";
+
+        const code = els.editor.value;
+        const demo = DEMOS.find(d => d.id === activeDemoId);
+
+        try {
+            pyodide.setStdout({
+                batched: (msg) => {
+                    const line = document.createElement('div');
+                    line.className = "mb-1 border-b border-slate-50 pb-1";
+                    line.innerText = msg;
+                    els.console.appendChild(line);
+                }
+            });
+
+            if (demo.sliders) {
+                let paramPy = "params = {";
+                demo.sliders.forEach(s => { paramPy += `'${s.id}': ${s.value},`; });
+                paramPy += "}";
+                await pyodide.runPythonAsync(paramPy);
+            }
+
+            await pyodide.loadPackagesFromImports(code);
+
+            // Clear any previous plot URL in Python state
+            pyodide.runPython("plot_url = ''");
+
+            await pyodide.runPythonAsync(code);
+
+            // Explicitly check for the global variable 'plot_url'
+            const plotUrl = pyodide.globals.get('plot_url');
+
+            if (plotUrl && plotUrl.startsWith('data:image')) {
+                els.img.src = plotUrl;
+                switchTab('graph');
+            }
+
+        } catch (err) {
+            const errLine = document.createElement('div');
+            errLine.className = "text-red-600 font-bold mb-1";
+            errLine.innerText = "Runtime Error: " + err.message;
+            els.console.appendChild(errLine);
+            switchTab('console');
+        } finally {
+            els.runBtn.disabled = false;
+            els.runBtnText.innerText = "Run";
+            els.outputLoader.classList.add('hidden');
+        }
+    }
+
+    window.downloadImage = function () {
+        const img = document.getElementById('output-image');
+        if (img.src && img.src.startsWith('data:image')) {
+            const a = document.createElement('a');
+            a.href = img.src;
+            a.download = `simulation.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    }
+
+    window.downloadCSV = async function () {
+        if (!pyodide) return;
+        try {
+            const csvContent = pyodide.globals.get('csv_data');
+            if (csvContent && csvContent.length > 5 && !csvContent.startsWith("No CSV")) {
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `data.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else { alert("No CSV data generated."); }
+        } catch (e) { console.error(e); }
+    }
+
+    window.selectDemo = selectDemo;
+
+    window.switchTab = function (tab) {
+        const graphView = document.getElementById('view-graph');
+        const consoleView = document.getElementById('view-console');
+        const tabGraph = document.getElementById('tab-graph');
+        const tabConsole = document.getElementById('tab-console');
+
+        if (tab === 'graph') {
+            graphView.classList.remove('hidden');
+            consoleView.classList.add('hidden');
+            tabGraph.classList.add('text-blue-600', 'border-blue-600', 'bg-white');
+            tabGraph.classList.remove('text-slate-500');
+            tabConsole.classList.remove('text-blue-600', 'border-blue-600', 'bg-white');
+            tabConsole.classList.add('text-slate-500');
+        } else {
+            graphView.classList.add('hidden');
+            consoleView.classList.remove('hidden');
+            tabConsole.classList.add('text-blue-600', 'border-blue-600', 'bg-white');
+            tabConsole.classList.remove('text-slate-500');
+            tabGraph.classList.remove('text-blue-600', 'border-blue-600', 'bg-white');
+            tabGraph.classList.add('text-slate-500');
+        }
+    }
+</script>
